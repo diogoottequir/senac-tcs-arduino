@@ -1,37 +1,36 @@
-//****************************************
-// Programa : TCC SENAC - Controle de Reservatorio                              
+// Programa : Controle de Reservatorio                              
 // Autor : Diogo Ottequir                                           
 // Data : 10/09/2016                                                
-//****************************************
+
+//Versão de firmware
 const String Versao = "A.01";
 
-//****************************************
-// Bibliotecas inclusas
-//****************************************
-#include <ESP8266.h>
-#include <SoftwareSerial.h>
-#include <LiquidCrystal.h>
+#pragma region Bibliotecas
+	#include <ESP8266.h>
+	#include <SoftwareSerial.h>
+	#include <LiquidCrystal.h>
 
-//****************************************
-// Configuracoes
-//****************************************
-#define SSID "DLINK"
-#define PASSWORD "19891992"
+#pragma endregion
+#pragma region Configuracao
+	#define SSID "DLINK"
+	#define PASSWORD "19891992"
 
-//#define SSID "MHTEC SISTEMAS"
-//#define PASSWORD "1307046881"
+	//#define SSID "MHTEC SISTEMAS"
+	//#define PASSWORD "1307046881"
 
-SoftwareSerial mSerial(2, 3); // RX - TX
-ESP8266 wifi(mSerial);
-LiquidCrystal lcd(9,8,7,6,5,4);
+	SoftwareSerial mSerial(2, 3); // RX - TX
+	ESP8266 wifi(mSerial);
+	LiquidCrystal lcd(9, 8, 7, 6, 5, 4);
 
-const char* host = "192.168.0.197";
-const int httpPort = 8080;
-const int potPin = 0;
-float nivel = 0;
-//****************************************
+#pragma endregion
+#pragma region Variaveis
+	const char* host = "192.168.0.197";
+	const int httpPort = 8080;
+	const int potPin = 0;
+	float nivel = 0;
+#pragma endregion
+
 // Rotinas
-//****************************************
 void setup()
 {
 	iniciaConfiguracoes();
@@ -46,15 +45,12 @@ void setup()
 
 void loop(void)
 {	
-	Serial.println("Aplicacao iniciada!");
-	Serial.print("Conectando em ");
-	Serial.println(host);
- 
-	lcd.clear();
+	lcd.clear();	
 	lcd.setCursor(0, 0);
 	lcd.print("Conectando em:");
 	lcd.setCursor(0, 1);
 	lcd.print(host);
+	
 	delay(1000);
   
 	uint8_t buffer[256] = { 0 };
@@ -68,77 +64,72 @@ void loop(void)
 	lcd.setCursor(0, 0);
 	lcd.print("======ERRO======");
 	lcd.setCursor(0, 1);
-	lcd.print("REINICIAR PLACA.");
-	finalizaPrograma();
+	lcd.print("REINICIANDO.");
+	
+	delay(1000);
+	//finalizaPrograma();
 }
 
+#pragma region Funcoes
 void iniciaConfiguracoes(){
 	Serial.begin(9600);
 	lcd.begin(16,2);
   
-	lcd.clear();
+	lcd.clear();	
 	lcd.setCursor(5,0);
-	lcd.print("D.D.F.");
+	lcd.print("D.D.F.");	
 	lcd.setCursor(0, 1);
 	lcd.print("TCC SENAC 2017-1");
-	Serial.println("Inicializando modulo");
+	
 	delay(2000);
   
-	lcd.clear();
+	lcd.clear();	
 	lcd.setCursor(2, 0);
-	lcd.print("Iniciando...");
+	lcd.print("Iniciando...");	
 	lcd.setCursor(2, 1);
-	lcd.print("Versao: " + Versao);
-	Serial.println("Versao do firmware: " + Versao); 
+	lcd.print("Versao: " + Versao);	
 }
 
 void defineModoOperacao(){
-	lcd.clear();
+	lcd.clear();	
 	lcd.setCursor(0, 0);
 	lcd.print("Modo de Operacao");
-	Serial.print("Definindo modo de operacao");    
+	
 	while(!wifi.setOprToStationSoftAP()) {
 		Serial.print(".");
 		delay(1000);
-	}
-	
-	Serial.println(".");   
+	}	
 	lcd.setCursor(0, 1);
 	lcd.print("STATUS OK");
-	Serial.println("Modo de operacao OK!");
 }
 
 void habilitaSingle(){ 
-	lcd.clear();
+	lcd.clear();	
 	lcd.setCursor(0, 0);
 	lcd.print("Config. Single");
-	Serial.print("Habilitando Single");
+	
 	while(!wifi.setOprToStationSoftAP()) {
 		Serial.print(".");
 		delay(1000);
-	}
-	
-	Serial.println(".");   
+	}	
 	lcd.setCursor(0, 1);
-	lcd.print("STATUS OK");
-	Serial.println("Single habilitado!");  
+	lcd.print("STATUS OK");	
 }
 
 void conectaWifi(){ 
-	lcd.clear();
+	lcd.clear();	
 	lcd.setCursor(0, 0);
 	lcd.print("Conectando WIFI");
-	Serial.println("Conectando a rede!");
+	
 	if (!wifi.joinAP(SSID, PASSWORD)) {
 		lcd.setCursor(0, 1);
 		lcd.print("Erro ao Conectar");
-		Serial.println("Erro ao conectar na rede!");
-		finalizaPrograma();
+		delay(1000);
 	} 
 	else {
 		lcd.setCursor(0, 1);
 		lcd.print("Rede Conectada");
-		Serial.println("Rede conectada!");
+		
 		Serial.print("IP: ");   
 		Serial.println(wifi.getLocalIP().c_str());
 	}
@@ -152,7 +143,7 @@ void mostraDisplay() {
 	str1 += nivel;
 	str1 += "%";
 
-	lcd.clear();
+	lcd.clear();	
 	lcd.setCursor(0, 0);
 	lcd.print(str1);
 	lcd.setCursor(0, 1);
@@ -160,13 +151,12 @@ void mostraDisplay() {
 }
 
 void efetuaRequisicao(uint8_t buffer[256]) {
-	Serial.println("Efetuando Requisicao.");
-  
 	String cabecalho = getCabecalho();
-	Serial.print("CABECALHO: ");
+	Serial.println("Efetuando Requisicao:");
 	Serial.println(cabecalho);
-  
-	if (wifi.send((const uint8_t*)cabecalho.c_str(), strlen(cabecalho.c_str()))) {
+	wifi.send((const uint8_t*)cabecalho.c_str(), strlen(cabecalho.c_str()));
+
+	/*if (wifi.send((const uint8_t*)cabecalho.c_str(), strlen(cabecalho.c_str()))) {
 		uint32_t len = wifi.recv(buffer, sizeof(buffer), 10000);
 		if (len > 0) {
 			Serial.print("RESPOSTA:[");
@@ -178,7 +168,7 @@ void efetuaRequisicao(uint8_t buffer[256]) {
 	}
 	else {
 		Serial.println("Erro ao efetuar requisicao!");
-	}
+	}*/
 }
 
 String getCabecalho(){
@@ -193,9 +183,11 @@ String getCabecalho(){
 	return str;
 }
 
-void finalizaPrograma(){
-	Serial.println("========== Erro ==========");
-	Serial.println("Reinicie o sistema.");
-	Serial.println("==========================");
-	while(1){}
-}
+//void finalizaPrograma(){
+//	Serial.println("========== Erro ==========");
+//	Serial.println("Reinicie o sistema.");
+//	Serial.println("==========================");
+//	while(1){}
+//}
+
+#pragma endregion
