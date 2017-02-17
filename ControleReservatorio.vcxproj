@@ -82,6 +82,7 @@
     <None Include="ControleReservatorio.ino">
       <FileType>CppCode</FileType>
     </None>
+    <None Include="README.md" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="__vm\.ControleReservatorio.vsarduino.h" />
