@@ -12,18 +12,19 @@
 
 //===================================================
 //Configuracao
-#define SSID "DLINK"
-#define PASSWORD "19891992"
-
-SoftwareSerial mSerial(0, 1); // RX - TX
+SoftwareSerial mSerial(6, 7); // RX - TX
 ESP8266 wifi(mSerial);
 U8GLIB_SSD1306_128X64 u8g(U8G_I2C_OPT_NO_ACK);
 
 //===================================================
 //Constantes
-const String Versao = "A.01"; //Versao de firmware
-const char* host = "192.168.0.197";
-const int httpPort = 8080;
+const String Versao = "A.01"; //Versao do firmware
+
+//Internet
+String SSID = "MHTEC SISTEMAS";
+String PASSWORD = "Wisermh123+";
+char* host = "";
+int httpPort = 8080;
 int tempoRequisicao = 0;
 
 //Vazao
@@ -42,6 +43,9 @@ void setup()
 {
 	// Inicializa Monitor Serial;
 	Serial.begin(9600);
+
+	// Configura WIFI
+	inicializaESP8266();
 	
 	// Inicializa display OLED;
 	u8g.begin();
@@ -67,6 +71,31 @@ void loop(void)
 
 //===================================================
 //Funções
+void inicializaESP8266() {
+	Serial.print("Versao do firmware: ");
+	Serial.println(wifi.getVersion().c_str());
+
+	if (!wifi.setOprToStationSoftAP())
+	{
+		Serial.println("Erro ao setar modo de configuracao!");
+	}
+	else
+	{
+		Serial.println("Modo de configuracao ok!");
+	}	
+	delay(1000);
+	
+	if (!wifi.joinAP(SSID, PASSWORD)) {
+		Serial.println("Erro ao conectar WIFI!");
+	}
+	else
+	{
+		Serial.println("WIFI conectada com sucesso!");
+		Serial.print("IP: ");
+		Serial.println(wifi.getLocalIP().c_str());
+	}
+}
+
 void calculaVazao()
 {
 	contaPulso = 0;
@@ -164,18 +193,18 @@ void lerArquivoConfig() {
 void requisicaoAPI()
 {
 	tempoRequisicao++;
-  Serial.println(tempoRequisicao);
+	Serial.println(tempoRequisicao);
 
-  if (tempoRequisicao == 600)
-  {
-	   //Implementar metodo para efetuar a requisição a api
-	   Serial.println("********************");
-	   Serial.println("EFETUADA REQUISICAO!");
-	   Serial.println("********************"); 
-     Serial.println(vazaoTotal);
+	if (tempoRequisicao == 600)
+	{
+		//Implementar metodo para efetuar a requisição a api
+		Serial.println("********************");
+		Serial.println("EFETUADA REQUISICAO!");
+		Serial.println("********************"); 
+		Serial.println(vazaoTotal);
 
-     tempoRequisicao = 0;
-  }
+		tempoRequisicao = 0;
+	}
 }
 
 void incpulso()
@@ -184,47 +213,13 @@ void incpulso()
 }
 
 
-#pragma region Funcoes
-void iniciaConfiguracoes() {
-  iniciaConfiguracoes();
-  delay(2000);
-  defineModoOperacao();
-  delay(2000);
-  habilitaSingle();
-  delay(2000);
-  conectaWifi();
-  delay(1000);
-}
 
-void defineModoOperacao() {
-  while (!wifi.setOprToStationSoftAP()) {
-    Serial.print(".");
-    delay(1000);
-  }
-}
-
-void habilitaSingle() {
-  while (!wifi.setOprToStationSoftAP()) {
-    Serial.print(".");
-    delay(1000);
-  }
-}
-
-void conectaWifi() {
-  if (!wifi.joinAP(SSID, PASSWORD)) {
-    delay(1000);
-  }
-  else {
-    Serial.print("IP: ");
-    Serial.println(wifi.getLocalIP().c_str());
-  }
-}
 
 void efetuaRequisicao(uint8_t buffer[256]) {
-  String cabecalho = getCabecalho();
-  Serial.println("Efetuando Requisicao:");
-  Serial.println(cabecalho);
-  wifi.send((const uint8_t*)cabecalho.c_str(), strlen(cabecalho.c_str()));
+	String cabecalho = getCabecalho();
+	Serial.println("Efetuando Requisicao:");
+	Serial.println(cabecalho);
+	wifi.send((const uint8_t*)cabecalho.c_str(), strlen(cabecalho.c_str()));
 
   // http://labdegaragem.com/profiles/blogs/arduino-json
   /*if (wifi.send((const uint8_t*)cabecalho.c_str(), strlen(cabecalho.c_str()))) {
@@ -243,14 +238,9 @@ void efetuaRequisicao(uint8_t buffer[256]) {
 }
 
 String getCabecalho() {
-  String str = "GET /Arduino/AdicionaTeste?";
-  str += "chave=Arduino";
-  str += "&nivel=";
-  str += "&motor = 1 ";
-  str += "HTTP/1.1\r\nHost: ";
-  str += host;
-  str += "\r\nConnection: close\r\n\r\n";
-  return str;
+	String str = "GET https://senac-tcs-api.herokuapp.com/users/sign_in";
+	str += "HTTP/1.1\r\nHost: ";
+	str += host;
+	str += "\r\nConnection: close\r\n\r\n";
+	return str;
 }
-
-#pragma endregion
