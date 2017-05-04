@@ -9,16 +9,23 @@
 #include <SoftwareSerial.h>
 #include <TimerOne.h>
 #include <U8glib.h>
+#include <SD.h>
 
 //===================================================
 //Configuracao
 SoftwareSerial mSerial(6, 7); // RX - TX
 ESP8266 wifi(mSerial);
 U8GLIB_SSD1306_128X64 u8g(U8G_I2C_OPT_NO_ACK);
+Sd2Card SDcard;
+SdVolume volume;
 
 //===================================================
 //Constantes
-const String Versao = "A.01"; //Versao do firmware
+//Versao do firmware
+const String Versao = "A.01"; 
+
+// Pino ligado ao CS do modulo
+const int chipSelect = 4;
 
 // Sensor nÍvel pinos 8, 9, 10, A1, A2 e A3
 const int S1 = 8; 
@@ -32,8 +39,8 @@ const int S6 = 17;
 const int SVazao = 2;
 
 //Internet
-String SSID = "MHTEC SISTEMAS";
-String PASSWORD = "Wisermh123+";
+String SSID = "";
+String PASSWORD = "";
 char* host = "";
 int httpPort = 8080;
 int tempoRequisicao = 0;
@@ -65,6 +72,25 @@ void setup()
 
 	// Inicializa display OLED;
 	u8g.begin();
+	
+	String firmware = "-Versao ESP8266: ";
+	firmware += wifi.getVersion();
+
+	String V = "-Versao ";
+	V += Versao;
+	u8g.firstPage();
+	do
+	{
+		u8g.setFont(u8g_font_8x13B);
+		u8g.drawStr(0, 15, "INICIANDO");
+		u8g.setFont(u8g_font_6x10);
+		u8g.drawStr(0, 25, V.c_str());
+		u8g.drawStr(0, 35, firmware.c_str());
+	} while (u8g.nextPage());
+	delay(2000);
+
+	//Inicia Cartão SD
+	inicializaSD();
 
 	// Configura WIFI;
 	inicializaESP8266();
@@ -89,49 +115,104 @@ void loop(void)
 }
 
 //Funções
-void inicializaESP8266() {
+void inicializaSD() {
+	if (!SD.begin(chipSelect))
+	{
+		while (1)
+		{
+			u8g.firstPage();
+			do
+			{
+				u8g.setFont(u8g_font_8x13B);
+				u8g.drawStr(0, 15, "Erro ao acessar");
+				u8g.drawStr(0, 30, "CARTAO!");
+			} while (u8g.nextPage());
+			delay(800);
+
+			u8g.firstPage();
+			do
+			{
+			} while (u8g.nextPage());
+			delay(800);
+		}
+		return;
+	}
+	
 	u8g.firstPage();
 	do
 	{
+		u8g.setFont(u8g_font_8x13B);
+		u8g.drawStr(0, 15, "CARTAO SD!");
 		u8g.setFont(u8g_font_6x10);
-		u8g.drawStr(20, 15, "INICIANDO");
-
-		String firmware = "Versão firmwar ESP8266: ";
-		       firmware += wifi.getVersion();
-		u8g.drawStr(20, 15, firmware.c_str());
-		
-		Serial.print(firmware);
-		
-		if (!wifi.setOprToStationSoftAP())
-		{
-			Serial.println("Erro ao setar modo de operacao!");
-			u8g.drawStr(20, 15, "Erro ao setar modo de operação!");
-		}
-		else
-		{
-			Serial.println("Modo de operacao ok!");
-			u8g.drawStr(20, 15, "Modo de operação ok!");
-		}	
-		delay(1000);
-	
-		if (!wifi.joinAP(SSID, PASSWORD)) {
-			Serial.println("Erro ao conectar WIFI!");
-			u8g.drawStr(20, 15, "Erro ao conectar WIFI!");
-		}
-		else
-		{
-			Serial.println("WIFI conectada com sucesso!");
-			u8g.drawStr(20, 15, "WIFI conectada com sucesso!");
-
-			String ip = "IP: ";
-			       ip += wifi.getLocalIP();
-			u8g.drawStr(20, 15, ip.c_str());
-			Serial.println(ip);
-		}
-		delay(2000);
-
+		u8g.drawStr(0, 25, "Cartao iniciado OK!");
 	} while (u8g.nextPage());
+	delay(2000);
 
+	File dataFile = SD.open("wifi.json", FILE_READ);
+	if (dataFile)
+	{
+		while (dataFile.available()) {
+			Serial.write(dataFile.read());
+		}
+		dataFile.close();		
+	}
+}
+
+void inicializaESP8266() {
+	// Seta modo de operação
+	setModoOperacao();
+	delay(2000);
+
+	// Conecta WIFI
+	conectaWifi();	
+}
+
+void setModoOperacao() {
+	String msg = "";
+	if (!wifi.setOprToStationSoftAP())
+	{
+		msg = "Erro ao setar modo de operacao!";
+	}
+	else
+	{
+		msg = "Modo de operacao ok!";
+	}
+	u8g.firstPage();
+	do
+	{
+		u8g.setFont(u8g_font_8x13B);
+		u8g.drawStr(0, 15, "MODO OPERACAO!");
+		u8g.setFont(u8g_font_6x10);
+		u8g.drawStr(0, 25, msg.c_str());
+	} while (u8g.nextPage());
+}
+
+void conectaWifi() {
+	u8g.firstPage();
+	do
+	{
+		u8g.setFont(u8g_font_8x13B);
+		u8g.drawStr(0, 15, "CONECTANDO WIFI!");
+	} while (u8g.nextPage());
+	if (!wifi.joinAP(SSID, PASSWORD)) {
+		while (1)
+		{
+			u8g.firstPage();
+			do
+			{
+				u8g.setFont(u8g_font_8x13B);
+				u8g.drawStr(0, 15, "Erro ao conectar!");
+				u8g.drawStr(0, 30, "WIFI!");
+			} while (u8g.nextPage());
+			delay(800);
+
+			u8g.firstPage();
+			do
+			{
+			} while (u8g.nextPage());
+			delay(800);
+		}
+	}
 }
 
 void calculaVazao()
@@ -187,17 +268,8 @@ void draw()
 	u8g.setFont(u8g_font_6x10);
 	u8g.drawStr(0, 45, "16.50%");
 
-	u8g.drawRFrame(40, 18, 15, 46, 3);
-	u8g.drawBox(43, 55, 9, 5);
-
-	//Nivel 2
-	u8g.setFont(u8g_font_fub11);
-	u8g.drawStr(70, 30, "R2=");
-
-	u8g.setFont(u8g_font_6x10);
-	u8g.drawStr(70, 45, "0.00%");
-
-	u8g.drawRFrame(110, 18, 15, 46, 3);
+	u8g.drawRFrame(40, 18, 80, 46, 3);
+	u8g.drawBox(44, 55, 72, 5);
 }
 
 void lerArquivoConfig() {
