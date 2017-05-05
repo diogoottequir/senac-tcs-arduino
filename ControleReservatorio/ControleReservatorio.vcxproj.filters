@@ -18,6 +18,7 @@
     <None Include="ControleReservatorio.ino" />
     <None Include=".gitignore" />
     <None Include="README.md" />
+    <None Include="util.ino" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="__vm\.ControleReservatorio.vsarduino.h">
