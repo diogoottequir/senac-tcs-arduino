@@ -6,15 +6,14 @@ void inicializaSD() {
 		mensagem(F("ERRO!"), F("Sem Cartao SD."), false);
 	}
 	mensagem(F("SUCESSO!"), F("Cartao OK."), true);
+	delay(1000);
 }
 
 void conectaWifi() {
 	buscaAutenticacaoWifi(lerArquivoConfigWifi());
 	setModoOperacao();
 	mensagem(F("CONECTANDO!"), "", true);
-	if (!wifi.joinAP(SSID, PASSWORD)) {
-		mensagem(F("ERRO!"), F("WIFI Desconectada."), false);   
-	}
+	while (!wifi.joinAP(SSID, PASSWORD)) {}
 	disableMUX();
 }
 
@@ -25,6 +24,7 @@ void setModoOperacao() {
 		mensagem(F("ERRO!"), F("Erro no Modo de Opr."), false);
 	} 
 	mensagem(F("SUCESSO.!"), F("Modo operacao OK."), true);
+	delay(1000);
 }
 
 void disableMUX() {
@@ -34,6 +34,7 @@ void disableMUX() {
 		mensagem(F("ERRO!"), F("Single erro."), false);
 	}
 	mensagem(F("SUCESSO.!"), F("Single OK."), true);
+	delay(1000);
 }
 
 String lerArquivoConfigWifi() {
@@ -56,6 +57,37 @@ String lerArquivoConfigWifi() {
 	return json;
 }
 
+void lerArquivoSetings() {
+	String json = "";
+	File dataFile = SD.open(F("setings.txt"), FILE_READ);
+	if (dataFile)
+	{
+		while (dataFile.available()) {
+			char linha = dataFile.read();
+			json += linha;
+		}
+		dataFile.close();
+	}
+	else
+	{
+		mensagem(F("ERRO!"), F("setings.txt nao encontrado."), false);
+	}
+	dataFile.close();
+	Serial.println(json);
+	
+	DynamicJsonBuffer jsonBuffer;
+	JsonObject& root = jsonBuffer.parseObject(json);
+	if (root.success())
+	{
+		EMAIL = root["user"]["email"].asString();
+		SENHA = root["user"]["password"].asString();
+		return;
+	}
+	EMAIL = "";
+	SENHA = "";
+	
+}
+
 void buscaAutenticacaoWifi(String json) 
 {
 	DynamicJsonBuffer jsonBuffer;
@@ -71,38 +103,64 @@ void buscaAutenticacaoWifi(String json)
 }
 
 void efetuaRequisicao() {
-	uint8_t buffer[1024] = { 0 };
+	Serial.println("EFETUANDO REQUISICAO");
+	uint8_t buffer[1024] = {0};
 
-	if (!wifi.createTCP(HOST_NAME, HOST_PORT)) {
-		mostraDisplay(F("ERRO!"), F("Falha no TCP."), false);
-	}
+    if (wifi.createTCP(HOST_NAME, HOST_PORT)) {
+        Serial.println("create tcp ok!");
+    } else {
+        Serial.println("create tcp erro!");
+    }
 
-	String requisicao = getLogin();
-	wifi.send((const uint8_t*)requisicao.c_str(), strlen(requisicao.c_str()));
+    String hello = getLogin();
+    Serial.println(hello);
+    delay(500);
+    wifi.send((const uint8_t*)hello.c_str(), strlen(hello.c_str()));
 
-	//char *hello = "GET / HTTP/1.1\r\nHost: www.baidu.com\r\nConnection: close\r\n\r\n";
-	//wifi.send((const uint8_t*)hello, strlen(hello));
+	Serial.println("");
+    uint32_t len = wifi.recv(buffer, sizeof(buffer), 5000);
+    if (len > 0) {
+        Serial.print("Received:[");
+        for(uint32_t i = 0; i < len; i++) {
+            Serial.print((char)buffer[i]);
+        }
+        Serial.println("]");
+    }
 
-	uint32_t len = wifi.recv(buffer, sizeof(buffer), 10000);
-	if (len > 0) {
-		Serial.print("RESPOSTA:[");
-		for (uint32_t i = 0; i < len; i++) {
-			Serial.print((char)buffer[i]);
-		}
-		Serial.print("]\r\n");
-	}
-
-	if (!wifi.releaseTCP()) {
-		mostraDisplay(F("ERRO!"), F("Falha no TCP."), false);
-	}			
+    if (wifi.releaseTCP()) {
+        Serial.println("release tcp ok!");
+    } else {
+        Serial.println("release tcp erro!");
+    }
 }
 
-String getLogin() {
-	//String str = "GET https://senac-tcs-api.herokuapp.com/users/sign_in";
-	//str += "HTTP/1.1\r\nHost: ";
-	//str += host;
-	//str += "\r\nConnection: close\r\n\r\n";
-	return "";//str;
+String getLogin() { 
+	String data = montaJsonLogin();
+
+	String str = "POST /users/sign_in HTTP/1.1\r\n";
+	str += "Host: senac-tcs-api.herokuapp.com\r\n";
+	str += "User-Agent: Arduino/1.0\r\n";
+	str += "Content-Type: application/json\r\n";
+	str += "Cache-Control: no-cache\r\n";
+	str += "Content-Length: ";
+	str += data.length();
+	str += "\r\n";
+	str += "\r\n";
+	str += data;
+	return str;
+}
+
+String montaJsonLogin()
+{
+	String retorno = "";
+	DynamicJsonBuffer jsonBuffer;
+	JsonObject& root = jsonBuffer.createObject();
+	JsonObject& json = root.createNestedObject("user");
+	json["email"] = EMAIL;
+	json["password"] = SENHA;
+	root.printTo(retorno);
+	Serial.println(retorno);
+	return retorno;
 }
 
 void calculaVazao()
@@ -115,16 +173,16 @@ void calculaVazao()
 	vazao = contaPulso / 5.5;
 	consumo = consumo + vazao;
 	segundo++;
+	sei();
+  
+	Serial.println(segundo);
 	if (segundo == 60)
 	{
 		segundo = 0;
-		minuto++;
+		vazaoTotal = consumo / 60;
+		efetuaRequisicao();
 	}
-	if (minuto == 10)
-	{
-		vazaoTotal = consumo / (60 * 10);
-		minuto = 0;
-	}
+	cli();   
 }
 
 void mensagem(String titulo, String msg, bool status) 

@@ -27,20 +27,18 @@ U8GLIB_SSD1306_128X64 u8g(U8G_I2C_OPT_NO_ACK);
 #define S6 32
 #define SVazao 2
 #define chipSelect 4
-#define HOST_NAME   ""
-#define HOST_PORT   (8080)
-
+#define HOST_NAME   "senac-tcs-api.herokuapp.com"
+#define HOST_PORT   (80)
 
 String SSID = "";
 String PASSWORD = "";
+String EMAIL = "";
+String SENHA = "";
 
-byte tempoRequisicao = 0;
 byte segundo = 0;
-byte minuto = 0;
 float vazao = 0;
 float consumo = 0;
 float vazaoTotal = 0;
-float mediaTotal = 0;
 int contaPulso = 0;
 
 /*
@@ -68,15 +66,16 @@ void setup()
 		
 	inicializaSD();
 	conectaWifi();
+	lerArquivoSetings();
 	
-	Timer1.initialize(1000000);
-	Timer1.attachInterrupt(requisicaoAPI);
+	//Timer1.initialize(1000000);
+	//Timer1.attachInterrupt(requisicaoAPI);
 	attachInterrupt(0, incpulso, RISING);
 }
 
 void loop(void)
 {	
-	u8g.firstPage();
+  u8g.firstPage();
 	do
 	{
 		draw(vazao);		
@@ -159,21 +158,10 @@ void mostraNivel()
 /*
 Interrupções
 */
-void requisicaoAPI()
-{
-	tempoRequisicao++;
-	if (tempoRequisicao == 600)
-	{
-		Serial.println(F("********************"));
-		Serial.println(F("EFETUADA REQUISICAO!"));
-		Serial.println(F("********************")); 
-		Serial.println(vazaoTotal);
-
-		tempoRequisicao = 0;
-	}
-}
 
 void incpulso()
 {
 	contaPulso++;
 }
+
+
