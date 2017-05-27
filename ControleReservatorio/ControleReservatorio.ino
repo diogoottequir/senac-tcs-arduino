@@ -7,6 +7,7 @@ Data : 10/09/2016
 */
 
 /*Bibliotecas*/
+#include "HttpResponse.h"
 #include <ArduinoJson.h>
 #include <ESP8266.h>
 #include <SoftwareSerial.h>
@@ -27,13 +28,22 @@ U8GLIB_SSD1306_128X64 u8g(U8G_I2C_OPT_NO_ACK);
 #define S6 32
 #define SVazao 2
 #define chipSelect 4
-#define HOST_NAME   "senac-tcs-api.herokuapp.com"
-#define HOST_PORT   (80)
+
+const String HOST_NAME = "senac-tcs-api.herokuapp.com";
+const int HOST_PORT = 80;
 
 String SSID = "";
 String PASSWORD = "";
 String EMAIL = "";
 String SENHA = "";
+
+String IDS1 = "";
+String IDS2 = "";
+String IDS3 = "";
+String IDS4 = "";
+String IDS5 = "";
+String IDS6 = "";
+String IDSVazao = "";
 
 byte segundo = 0;
 float vazao = 0;
@@ -51,8 +61,8 @@ void setup()
 	String V = F("-Versao ");
 	V += Versao;
 	mensagem(F("INICIANDO!"), V, true);
-	delay(2000);
-
+	delay(2000);	
+	
 	pinMode(S1, INPUT);
 	pinMode(S2, INPUT);
 	pinMode(S3, INPUT);
@@ -63,7 +73,7 @@ void setup()
 	
 	Serial.begin(9600);
 	u8g.begin();
-		
+	
 	inicializaSD();
 	conectaWifi();
 	lerArquivoSetings();
@@ -88,7 +98,7 @@ void draw(float vazao)
 {
 	String vz = F(" = ");
 		   vz += vazao;
-           vz += F(" L/s");	
+           vz += F(" L/m");	
 	mostraConsumo(vz);
 	mostraNivel();
 }
@@ -137,7 +147,7 @@ void mostraNivel()
 	}
 	if (digitalRead(S5) == 1)
 	{
-		u8g.drawBox(44, 25, 72, 5);
+		u8g.drawBox(44, 31, 72, 5);
 		nivel = nivel + 16.67;
 	}
 	if (digitalRead(S6) == 1)
