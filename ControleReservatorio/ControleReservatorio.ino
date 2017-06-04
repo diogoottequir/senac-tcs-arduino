@@ -18,6 +18,7 @@ Data : 10/09/2016
 /*Declarações*/
 ESP8266 wifi(Serial1);
 U8GLIB_SSD1306_128X64 u8g(U8G_I2C_OPT_NO_ACK);
+HttpResponseClass httpResponse;
 
 #define Versao "A.01" 
 #define S1 22 
@@ -37,13 +38,14 @@ String PASSWORD = "";
 String EMAIL = "";
 String SENHA = "";
 
+String IDSVazao = "";
+String IDRuler = "";
 String IDS1 = "";
 String IDS2 = "";
 String IDS3 = "";
 String IDS4 = "";
 String IDS5 = "";
 String IDS6 = "";
-String IDSVazao = "";
 
 byte segundo = 0;
 float vazao = 0;
@@ -75,8 +77,7 @@ void setup()
 	u8g.begin();
 	
 	inicializaSD();
-	conectaWifi();
-	lerArquivoSetings();
+	conectaWifi();	
 	
 	//Timer1.initialize(1000000);
 	//Timer1.attachInterrupt(requisicaoAPI);

@@ -1,3 +1,4 @@
+#pragma region Inicialização
 void inicializaSD() {
 	mensagem(F("CARTAO SD!"), F(""), true);
 	delay(1000);
@@ -8,12 +9,21 @@ void inicializaSD() {
 	mensagem(F("SUCESSO!"), F("Cartao OK."), true);
 	delay(1000);
 }
-
+void setModoOperacao() {
+	mensagem(F("MODO OPR.!"), F(""), true);
+	delay(1000);
+	if (!wifi.setOprToStationSoftAP())
+	{
+		mensagem(F("ERRO!"), F("Erro no Modo de Opr."), false);
+	}
+	mensagem(F("SUCESSO.!"), F("Modo operacao OK."), true);
+	delay(1000);
+}
 void conectaWifi() {
 	buscaAutenticacaoWifi(lerArquivoConfigWifi());
 	setModoOperacao();
 	mensagem(F("CONECTANDO!"), "", true);
-	
+
 	SSID = "DLINK";
 	PASSWORD = "19891992";
 	//SSID = "Senac";
@@ -24,35 +34,25 @@ void conectaWifi() {
 	while (!wifi.joinAP(SSID, PASSWORD)) {}
 	disableMUX();
 }
-
-void setModoOperacao() {
-	mensagem(F("MODO OPR.!"), F(""), true);
-	delay(1000);
-	if (!wifi.setOprToStationSoftAP())
-	{
-		mensagem(F("ERRO!"), F("Erro no Modo de Opr."), false);
-	} 
-	mensagem(F("SUCESSO.!"), F("Modo operacao OK."), true);
-	delay(1000);
-}
-
 void disableMUX() {
 	mensagem(F("SINGLE!"), F(""), true);
 	delay(1000);
-	if (!wifi.disableMUX()) 
+	if (!wifi.disableMUX())
 	{
 		mensagem(F("ERRO!"), F("Single erro."), false);
 	}
 	mensagem(F("SUCESSO.!"), F("Single OK."), true);
 	delay(1000);
 }
+#pragma endregion
 
+#pragma region Cartão SD
 String lerArquivoConfigWifi() {
 	String json = "";
 	File dataFile = SD.open(F("wifi.txt"), FILE_READ);
 	if (dataFile)
 	{
-		while (dataFile.available()) 
+		while (dataFile.available())
 		{
 			char linha = dataFile.read();
 			json += linha;
@@ -66,7 +66,6 @@ String lerArquivoConfigWifi() {
 	dataFile.close();
 	return json;
 }
-
 void lerArquivoSetings() {
 	String json = "";
 	EMAIL = "";
@@ -94,7 +93,7 @@ void lerArquivoSetings() {
 		mensagem(F("ERRO!"), F("arquivo setings nao encontrado."), false);
 	}
 	dataFile.close();
-	
+
 	DynamicJsonBuffer jsonBuffer;
 	JsonObject& root = jsonBuffer.parseObject(json);
 	if (root.success())
@@ -106,9 +105,9 @@ void lerArquivoSetings() {
 	}
 	root.end();
 }
-
 void setIdLevelSensor(JsonObject& root)
 {
+	IDRuler = root["device"]["rulers"][0]["id"].asString();
 	for (size_t i = 0; i < root["device"]["rulers"][0]["level_sensors"].size(); i++)
 	{
 		int pin = root["device"]["rulers"][0]["level_sensors"][i]["pin"];
@@ -135,11 +134,10 @@ void setIdLevelSensor(JsonObject& root)
 		}
 	}
 }
-
-void buscaAutenticacaoWifi(String json) 
+void buscaAutenticacaoWifi(String json)
 {
 	SSID = "";
-	PASSWORD = ""; 
+	PASSWORD = "";
 	DynamicJsonBuffer jsonBuffer;
 	JsonObject& root = jsonBuffer.parseObject(json);
 	if (root.success())
@@ -147,38 +145,98 @@ void buscaAutenticacaoWifi(String json)
 		SSID = root["wifi"]["ssid"].asString();
 		PASSWORD = root["wifi"]["password"].asString();
 	}
-	root.end();	
+	root.end();
 }
+#pragma endregion
 
+#pragma region Visualização
+void calculaVazao()
+{
+	contaPulso = 0;
+	sei();
+	delay(1000);
+	cli();
+
+	vazao = 0;
+	vazao = contaPulso / 5.5;
+	consumo = consumo + vazao;
+	segundo++;
+	sei();
+
+	Serial.println(segundo);
+	if (segundo == 30)
+	{
+		segundo = 0;
+		vazaoTotal = consumo / 30;
+		efetuaRequisicao();
+	}
+	cli();
+}
+void mensagem(String titulo, String msg, bool status)
+{
+	if (status)
+	{
+		mostraDisplay(titulo, msg, status);
+		return;
+	}
+	while (1)
+	{
+		mostraDisplay(titulo, msg, status);
+		delay(800);
+		limpaDisplay();
+		delay(800);
+	}
+}
+void mostraDisplay(String titulo, String msg, bool status)
+{
+	u8g.firstPage();
+	do
+	{
+		u8g.setFont(u8g_font_fub11r);
+		u8g.drawStr(0, 15, titulo.c_str());
+		u8g.setFont(u8g_font_6x10r);
+		u8g.drawStr(0, 30, msg.c_str());
+	} while (u8g.nextPage());
+}
+void limpaDisplay()
+{
+	u8g.firstPage();
+	do {} while (u8g.nextPage());
+}
+#pragma endregion
+
+#pragma region Requisição
 void efetuaRequisicao() {
+	lerArquivoSetings();
+	mensagem(F("REQUISICAO!"), F("Enviando Dados"), true);
 	Serial.println(F("EFETUANDO REQUISICAO"));
-	createTCP();	
-	char* response = sendRequest(requestAPI("POST", "/users/sign_in", getJsonLogin(), ""));
-	
-	HttpResponseClass httpResponse;
-	httpResponse.begin(response);
+	createTCP();
+	char* response_signin = sendRequest(requestAPI("POST", "/users/sign_in", getJsonLogin(), ""));
 	String Authorization = "";
-	if (httpResponse.getStatus() == 200)
-	{		
-		Authorization = httpResponse.getHeader("Authorization");
+	if (httpResponse.getStatus(response_signin) == 200)
+	{
+		Authorization = httpResponse.getHeader("Authorization", response_signin);
 		Serial.println();
 		Serial.print(F("Authorization: "));
-		Serial.println(Authorization);		
+		Serial.println(Authorization);
 		if (IDSVazao != "")
 		{
-			sendFlowSensorsData(Authorization);			
+			sendFlowSensorsData(Authorization);
+		}
+		if (IDRuler != "")
+		{
+			sendRulerData(Authorization);
 		}
 	}
 	else
 	{
+		mensagem(F("REQUISICAO!"), F("Erro signin!"), true);
 		Serial.print(F("ERRO: "));
-		Serial.println(httpResponse.getStatus());
+		Serial.println(httpResponse.getStatus(response_signin));
 	}
 	Serial.println(F("***** FIM DA REQUISICAO *****"));
-	while (true){}
 }
-
-void createTCP() 
+void createTCP()
 {
 	Serial.print(F("CRIANDO TCP"));
 	while (!wifi.createTCP(HOST_NAME, HOST_PORT))
@@ -187,7 +245,6 @@ void createTCP()
 	}
 	Serial.println(F("."));
 }
-
 char* sendRequest(String httpRequest)
 {
 	char* response = "";
@@ -200,15 +257,15 @@ char* sendRequest(String httpRequest)
 		if (len > 0)
 		{
 			response = (char*)buffer;
-		}		
+		}
 	}
 	else
 	{
+		mensagem(F("REQUISICAO!"), F("Erro send!"), true);
 		Serial.println(F("ERRO AO EFETUAR REQUISICAO!"));
 	}
 	return response;
 }
-
 void sendFlowSensorsData(String Authorization)
 {
 	Serial.println();
@@ -221,21 +278,47 @@ void sendFlowSensorsData(String Authorization)
 	urlFlowSensorsData += IDSVazao;
 	urlFlowSensorsData += "/flow_sensors_data";
 
-	char* response = sendRequest(requestAPI("POST", urlFlowSensorsData, getJsonFlowSensorsData(), Authorization));
-	httpResponse.begin(response);
-	if (httpResponse.getStatus() == 201)
+	char* response_flow_sensor = sendRequest(requestAPI("POST", urlFlowSensorsData, getJsonFlowSensorsData(), Authorization));
+	Serial.println(response_flow_sensor);
+	if (httpResponse.getStatus(response_flow_sensor) == 201)
 	{
 		Serial.println();
 		Serial.println(F("OK!"));
 	}
 	else
 	{
+		mensagem(F("REQUISICAO!"), F("Erro Flow Sensor!"), true);
 		Serial.print(F("ERRO: "));
-		Serial.println(httpResponse.getStatus());
+		Serial.println(httpResponse.getStatus(response_flow_sensor));
 	}
 }
+void sendRulerData(String Authorization)
+{
+	Serial.println();
+	Serial.print(F("RULER ID: "));
+	Serial.println(IDRuler);
+	Serial.print(F("data: "));
+	Serial.println(getJsonRulerData());
 
-String requestAPI(String method, String url, String data, String token) { 
+	String urlRulerData = "/rulers/";
+	urlRulerData += IDRuler;
+	urlRulerData += "/rulers_data";
+
+	char* response_ruler = sendRequest(requestAPI("POST", urlRulerData, getJsonRulerData(), Authorization));
+	Serial.println(response_ruler);
+	if (httpResponse.getStatus(response_ruler) == 201)
+	{
+		Serial.println();
+		Serial.println(F("OK!"));
+	}
+	else
+	{
+		mensagem(F("REQUISICAO!"), F("Erro Ruler!"), true);
+		Serial.print(F("ERRO: "));
+		Serial.println(httpResponse.getStatus(response_ruler));
+	}
+}
+String requestAPI(String method, String url, String data, String token) {
 	String str = "";
 	str = method;
 	str += " ";
@@ -257,7 +340,6 @@ String requestAPI(String method, String url, String data, String token) {
 	str += data;
 	return str;
 }
-
 String getJsonLogin()
 {
 	String retorno = "";
@@ -270,72 +352,106 @@ String getJsonLogin()
 	root.end();
 	return retorno;
 }
-
 String getJsonFlowSensorsData()
 {
 	String retorno = "";
 	DynamicJsonBuffer jsonBuffer;
-	JsonObject& root = jsonBuffer.createObject();	
+	JsonObject& root = jsonBuffer.createObject();
 	root["consumption_per_minute"] = vazaoTotal;
 	root["flow_sensor_id"] = IDSVazao;
 	root.printTo(retorno);
 	root.end();
 	return retorno;
 }
-
-void calculaVazao()
+String getJsonRulerData()
 {
-	contaPulso = 0;
-	sei();
-	delay(1000);
-	cli();
-	
-	vazao = 0;
-	vazao = contaPulso / 5.5;
-	consumo = consumo + vazao;
-	segundo++;
-	sei();
-  
-	Serial.println(segundo);
-	if (segundo == 5)
+	String retorno = "";
+	DynamicJsonBuffer jsonBuffer;
+	JsonObject& root = jsonBuffer.createObject();
+	root["ruler_id"] = IDRuler;	
+	JsonArray& data = root.createNestedArray("level_sensor_data_attributes");
+	if (IDS1 != "")
 	{
-		segundo = 0;
-		vazaoTotal = consumo / 60;
-		efetuaRequisicao();
+		JsonObject& rootS1 = data.createNestedObject();
+		if (digitalRead(S1) == 1)
+		{
+			rootS1["switched_on"] = "true";
+		}
+		else
+		{
+			rootS1["switched_on"] = "false";
+		}
+		rootS1["level_sensor_id"] = IDS1;
 	}
-	cli();   
-}
-
-void mensagem(String titulo, String msg, bool status) 
-{
-	if (status)
+	if (IDS2 != "")
 	{
-		mostraDisplay(titulo, msg, status);
-		return;
+		JsonObject& rootS2 = data.createNestedObject();
+		if (digitalRead(S2) == 1)
+		{
+			rootS2["switched_on"] = "true";
+		}
+		else
+		{
+			rootS2["switched_on"] = "false";
+		}
+		rootS2["level_sensor_id"] = IDS2;
 	}
-	while (1)
+	if (IDS3 != "")
 	{
-		mostraDisplay(titulo, msg, status);
-		delay(800);
-		limpaDisplay();
-		delay(800);
-	}	
-}
-
-void mostraDisplay(String titulo, String msg, bool status)
-{
-	u8g.firstPage();
-	do
+		JsonObject& rootS3 = data.createNestedObject();
+		if (digitalRead(S3) == 1)
+		{
+			rootS3["switched_on"] = "true";
+		}
+		else
+		{
+			rootS3["switched_on"] = "false";
+		}
+		rootS3["level_sensor_id"] = IDS3;
+	}
+	if (IDS4 != "")
 	{
-		u8g.setFont(u8g_font_fub11r);
-		u8g.drawStr(0, 15, titulo.c_str());
-		u8g.setFont(u8g_font_6x10r);
-		u8g.drawStr(0, 30, msg.c_str());
-	} while (u8g.nextPage());
+		JsonObject& rootS4 = data.createNestedObject();
+		if (digitalRead(S4) == 1)
+		{
+			rootS4["switched_on"] = "true";
+		}
+		else
+		{
+			rootS4["switched_on"] = "false";
+		}
+		rootS4["level_sensor_id"] = IDS4;
+	}
+	if (IDS5 != "")
+	{
+		JsonObject& rootS5 = data.createNestedObject();
+		if (digitalRead(S5) == 1)
+		{
+			rootS5["switched_on"] = "true";
+		}
+		else
+		{
+			rootS5["switched_on"] = "false";
+		}
+		rootS5["level_sensor_id"] = IDS5;
+	}
+	if (IDS6 != "")
+	{
+		JsonObject& rootS6 = data.createNestedObject();
+		if (digitalRead(S6) == 1)
+		{
+			rootS6["switched_on"] = "true";
+		}
+		else
+		{
+			rootS6["switched_on"] = "false";
+		}
+		rootS6["level_sensor_id"] = IDS6;
+	}
+	root.printTo(retorno);
+	root.end();
+	return retorno;
 }
+#pragma endregion
 
-void limpaDisplay()
-{
-	u8g.firstPage();
-	do {} while (u8g.nextPage());
-}
+

@@ -4,26 +4,21 @@
 
 #include "HttpResponse.h"
 
-void HttpResponseClass::begin(char* httpResponse)
-{
-	response = httpResponse;
-}
-
-int HttpResponseClass::getStatus()
+int HttpResponseClass::getStatus(char* response)
 {	
 	String txt = response;
 	return txt.substring(9, 12).toInt();
 }
 
-char* HttpResponseClass::getHeader(char* search)
+char* HttpResponseClass::getHeader(char* search, char* response)
 {
-	char* responseTemp = "";
-	responseTemp = (char*) calloc(strlen(response) + 1, sizeof(char));
-	strcpy(responseTemp, response);
+	//char* responseTemp = "";
+	//responseTemp = (char*) calloc(strlen(response) + 1, sizeof(char));
+	//strcpy(responseTemp, response);
 	
 	char lb[] = "\r\n";
 	char* end_str;
-	char* lines = strtok_r(responseTemp, lb, &end_str);
+	char* lines = strtok_r(response, lb, &end_str);
 	while (lines)
 	{
 		char *end_token;
@@ -46,13 +41,14 @@ char* HttpResponseClass::getHeader(char* search)
 	return "";
 }
 
-char* HttpResponseClass::getBody()
+char* HttpResponseClass::getBody(char* response)
 {
-	/*char* responseTemp = "";
-	responseTemp = (char*) calloc(strlen(response) + 1, sizeof(char));
-	strcpy(responseTemp, response);
+	//char* responseTemp = "";
+	//responseTemp = (char*) calloc(strlen(response) + 1, sizeof(char));
+	//strcpy(responseTemp, response);
+	
 	char lb[] = "\r\n\r\n";
-	char* lines = strtokm(responseTemp, lb);
+	char* lines = strtokm(response, lb);
 	int i = 0;
 	while (lines)
 	{
@@ -62,7 +58,7 @@ char* HttpResponseClass::getBody()
 		i++;
 		lines = strtokm(NULL, lb);
 	}
-	return "";*/
+	return "";
 }
 
 char* HttpResponseClass::strtokm(char *str, const char *delim)

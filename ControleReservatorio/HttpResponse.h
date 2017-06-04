@@ -17,14 +17,13 @@
 class HttpResponseClass
 { 
  public:
-	void begin(char* httpResponse);
-	int getStatus();
-	char* getHeader(char* search);
-	char* getBody();
+	int getStatus(char* response);
+	char* getHeader(char* search, char* response);
+	char* getBody(char* response);
 	char* strtokm(char *str, const char *delim);
 
 private:
-	char* response;
+	
 };
 
 extern HttpResponseClass HttpResponse;
