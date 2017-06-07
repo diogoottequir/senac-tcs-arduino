@@ -24,8 +24,8 @@ void conectaWifi() {
 	setModoOperacao();
 	mensagem(F("CONECTANDO!"), "", true);
 
-	SSID = "DLINK";
-	PASSWORD = "19891992";
+	//SSID = "DLINK";
+	//PASSWORD = "19891992";
 	//SSID = "Senac";
 	//PASSWORD = "@senac#alunos";
 	//SSID = "MHTEC SISTEMAS";
@@ -164,10 +164,10 @@ void calculaVazao()
 	sei();
 
 	Serial.println(segundo);
-	if (segundo == 30)
+	if (segundo == 15)
 	{
 		segundo = 0;
-		vazaoTotal = consumo / 30;
+		vazaoTotal = consumo / 15;
 		efetuaRequisicao();
 	}
 	cli();
@@ -453,5 +453,3 @@ String getJsonRulerData()
 	return retorno;
 }
 #pragma endregion
-
-
