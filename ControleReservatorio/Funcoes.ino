@@ -169,6 +169,7 @@ void calculaVazao()
 		segundo = 0;
 		vazaoTotal = consumo / 15;
 		efetuaRequisicao();
+		consumo = 0;
 	}
 	cli();
 }
@@ -239,11 +240,16 @@ void efetuaRequisicao() {
 void createTCP()
 {
 	Serial.print(F("CRIANDO TCP"));
-	while (!wifi.createTCP(HOST_NAME, HOST_PORT))
+	int tmp = 0;
+	while (tmp != 5)
 	{
+		if (wifi.createTCP(HOST_NAME, HOST_PORT))
+		{
+			return;
+		}
+		tmp++;
 		Serial.print(F("."));
 	}
-	Serial.println(F("."));
 }
 char* sendRequest(String httpRequest)
 {
