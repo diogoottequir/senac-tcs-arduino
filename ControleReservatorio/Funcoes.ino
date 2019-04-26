@@ -24,13 +24,6 @@ void conectaWifi() {
 	setModoOperacao();
 	mensagem(F("CONECTANDO!"), "", true);
 
-	//SSID = "DLINK";
-	//PASSWORD = "19891992";
-	//SSID = "Senac";
-	//PASSWORD = "@senac#alunos";
-	//SSID = "MHTEC SISTEMAS";
-	//PASSWORD = "Wisermh123+";
-
 	while (!wifi.joinAP(SSID, PASSWORD)) {}
 	disableMUX();
 }
